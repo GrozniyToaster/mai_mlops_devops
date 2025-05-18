@@ -1,0 +1,79 @@
+name: MLflow CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lab2/**'
+      - '.github/workflows/mlflow-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'lab2/**'
+      - '.github/workflows/mlflow-ci.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies with uv
+      run: |
+        cd lab2
+        uv pip install --system -r requirements.txt
+
+    - name: Lint with flake8
+      run: |
+        uv pip install --system flake8
+        cd lab2
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Test Docker Compose configuration
+      run: |
+        cd lab2
+        docker-compose config
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build MLflow server image
+      run: |
+        cd lab2
+        docker build -t mlflow-server -f Dockerfile.mlflow .
+
+    - name: Build Model training image
+      run: |
+        cd lab2
+        docker build -t model-training -f Dockerfile.model .
+
+    - name: Test Docker Compose up
+      run: |
+        cd lab2
+        docker-compose up -d
+        sleep 10
+        docker-compose ps
+        docker-compose logs
+        docker-compose down
