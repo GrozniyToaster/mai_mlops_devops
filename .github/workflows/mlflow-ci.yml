@@ -72,8 +72,8 @@ jobs:
     - name: Test Docker Compose up
       run: |
         cd lab2
-        docker-compose up -d
+        docker compose up -d
         sleep 10
-        docker-compose ps
-        docker-compose logs
-        docker-compose down
+        docker compose ps
+        docker compose logs
+        docker compose down
