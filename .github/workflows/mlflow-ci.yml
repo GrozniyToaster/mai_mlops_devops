@@ -46,7 +46,7 @@ jobs:
     - name: Test Docker Compose configuration
       run: |
         cd lab2
-        docker-compose config
+        docker compose config
 
   build:
     needs: test
